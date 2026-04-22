@@ -1,0 +1,47 @@
+{{define "content"}}
+<div class="fade-in">
+{{if .Sessions}}
+    <div class="mb-6">
+        <h2 class="text-xl font-bold text-gray-100">{{.ProjectName}}</h2>
+        <p class="text-sm text-gray-500 mt-1">{{len .Sessions}} sessions</p>
+    </div>
+
+    <div id="session-list" class="space-y-1">
+        {{range .Sessions}}
+        <a href="/projects/{{$.ProjectID}}/sessions/{{.ID}}"
+           hx-get="/projects/{{$.ProjectID}}/sessions/{{.ID}}"
+           hx-target="#main-content"
+           hx-push-url="true"
+           class="block px-4 py-3 rounded-lg hover:bg-surface-800 transition-colors border border-transparent hover:border-gray-700">
+            <div class="flex items-center justify-between">
+                <div class="flex-1 min-w-0">
+                    <div class="font-medium text-gray-200 truncate">{{.Title}}</div>
+                    <div class="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                        {{if .Branch}}<span>{{.Branch}}</span>{{end}}
+                        {{if .Version}}<span>v{{.Version}}</span>{{end}}
+                        <span>{{formatBytes .Size}}</span>
+                    </div>
+                </div>
+                <div class="text-xs text-gray-500 whitespace-nowrap ml-4">
+                    {{formatTime .ModTime}}
+                </div>
+            </div>
+        </a>
+        {{end}}
+    </div>
+
+    {{if .ProjectID}}
+    <div id="live-project" data-sse-url="/projects/{{.ProjectID}}/stream" data-refresh-url="/projects/{{.ProjectID}}"></div>
+    {{end}}
+{{else if .ProjectID}}
+    <div class="text-center text-gray-500 mt-20">
+        <p class="text-lg">No sessions found</p>
+    </div>
+{{else}}
+    <div class="text-center text-gray-500 mt-20">
+        <p class="text-2xl mb-2">witness</p>
+        <p class="text-sm">Select a project from the sidebar</p>
+    </div>
+{{end}}
+</div>
+{{end}}

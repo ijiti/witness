@@ -1,0 +1,60 @@
+{{define "content"}}
+<div class="fade-in">
+    <div class="mb-6">
+        <h2 class="text-xl font-bold text-gray-100 mb-4">Search Sessions</h2>
+        <form action="/search" method="get"
+              hx-get="/search"
+              hx-target="#main-content"
+              hx-push-url="true">
+            <input type="text" name="q" value="{{.Query}}"
+                   placeholder="Search prompts..."
+                   class="w-full px-4 py-2 bg-surface-800 border border-gray-700 rounded-lg text-gray-200 text-sm focus:outline-none focus:border-blue-500"
+                   autofocus>
+        </form>
+    </div>
+
+    {{if .Query}}
+    <div class="text-sm text-gray-500 mb-4">
+        {{- if .Total -}}
+            Showing {{add .Offset 1}}-{{.ShowEnd}} of {{.Total}} results for "{{.Query}}"
+        {{- else -}}
+            0 results for "{{.Query}}"
+        {{- end -}}
+    </div>
+    {{end}}
+
+    {{if .Results}}
+    <div id="search-results" class="space-y-1">
+        {{range .Results}}
+        <a href="/projects/{{.ProjectID}}/sessions/{{.SessionID}}"
+           hx-get="/projects/{{.ProjectID}}/sessions/{{.SessionID}}"
+           hx-target="#main-content"
+           hx-push-url="true"
+           class="block px-4 py-3 rounded-lg hover:bg-surface-800 transition-colors border border-transparent hover:border-gray-700">
+            <div class="text-sm text-gray-200 truncate">{{truncate .Display 200}}</div>
+            <div class="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                <span>{{.Project}}</span>
+                <span>{{formatTime .Timestamp}}</span>
+            </div>
+        </a>
+        {{end}}
+    </div>
+
+    {{if .HasMore}}
+    <div class="mt-4 text-center">
+        <button hx-get="/search?q={{.Query}}&offset={{.NextOffset}}&limit={{.Limit}}"
+                hx-target="#search-results"
+                hx-swap="beforeend"
+                hx-select="#search-results > *"
+                class="px-4 py-2 bg-surface-800 text-gray-300 rounded-lg text-sm hover:bg-surface-700 border border-gray-700">
+            Load more
+        </button>
+    </div>
+    {{end}}
+    {{end}}
+
+    {{if and .Query (not .Results)}}
+    <div class="text-center text-gray-500 mt-10">No results found</div>
+    {{end}}
+</div>
+{{end}}

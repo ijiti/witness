@@ -1,0 +1,55 @@
+{{define "session_header"}}
+<div class="bg-surface-800 rounded-lg border border-gray-700 p-4">
+    <div class="flex items-start justify-between">
+        <div>
+            <h2 class="text-lg font-bold text-gray-100">{{.Title}}</h2>
+            <div class="flex items-center gap-3 mt-2 text-sm text-gray-400">
+                {{if .GitBranch}}
+                <span class="inline-flex items-center px-2 py-0.5 rounded bg-surface-700 text-xs">{{.GitBranch}}</span>
+                {{end}}
+                {{if .Model}}
+                <span class="text-purple-400">{{.Model}}</span>
+                {{end}}
+                {{if .Version}}
+                <span class="text-gray-500">v{{.Version}}</span>
+                {{end}}
+                {{if .AgentPersona}}
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs {{agentBg .AgentPersona.Color}}">
+                    {{.AgentPersona.Name}}
+                </span>
+                {{else if .AgentSetting}}
+                <span class="text-cyan-400">agent: {{.AgentSetting}}</span>
+                {{end}}
+                {{if .PlanPath}}
+                <a href="/projects/{{.ProjectID}}/sessions/{{.ID}}/plan"
+                   hx-get="/projects/{{.ProjectID}}/sessions/{{.ID}}/plan"
+                   hx-target="#main-content"
+                   hx-push-url="true"
+                   class="inline-flex items-center px-2 py-0.5 rounded text-xs bg-orange-900/50 text-orange-300 hover:bg-orange-800/50 no-underline">plan</a>
+                {{end}}
+            </div>
+        </div>
+        <div class="text-right text-xs text-gray-500">
+            <div>{{formatTime .StartTime}}</div>
+            {{if not .EndTime.IsZero}}
+            <div class="mt-1">to {{formatTime .EndTime}}</div>
+            {{end}}
+        </div>
+    </div>
+
+    <div class="flex items-center gap-4 mt-3 pt-3 border-t border-gray-700 text-xs text-gray-400">
+        <span>{{len .Turns}} turns</span>
+        <span class="text-blue-400" title="Input tokens">in: {{formatTokens .TotalInputTokens}}</span>
+        <span class="text-green-400" title="Output tokens">out: {{formatTokens .TotalOutputTokens}}</span>
+        {{if gt .TotalCacheRead 0}}
+        <span class="text-yellow-400" title="Cache read tokens">cache: {{formatTokens .TotalCacheRead}}</span>
+        {{end}}
+        {{if gt .TotalCost 0.0}}
+        <span class="text-yellow-300" title="Estimated session cost">{{formatCost .TotalCost}}</span>
+        {{end}}
+        {{if gt .Compactions 0}}
+        <span class="text-orange-400">{{.Compactions}} compactions</span>
+        {{end}}
+    </div>
+</div>
+{{end}}

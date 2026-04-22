@@ -1,0 +1,15 @@
+{{define "content"}}
+<div class="fade-in">
+    <div class="mb-4">
+        <a href="/projects/{{.ProjectID}}/sessions/{{.Session.ID}}"
+           hx-get="/projects/{{.ProjectID}}/sessions/{{.Session.ID}}"
+           hx-target="#main-content"
+           hx-push-url="true"
+           class="text-sm text-blue-400 hover:text-blue-300">&larr; back to session</a>
+    </div>
+    <div class="bg-surface-800 rounded-lg border border-gray-700 p-6">
+        <h2 class="text-lg font-bold text-gray-100 mb-4">Plan: {{.Session.Slug}}</h2>
+        <pre class="text-sm text-gray-200 whitespace-pre-wrap leading-relaxed font-mono">{{.PlanContent}}</pre>
+    </div>
+</div>
+{{end}}

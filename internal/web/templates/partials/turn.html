@@ -1,0 +1,72 @@
+{{define "turn"}}
+<div class="space-y-2">
+    {{/* Compaction marker */}}
+    {{if .CompactionBefore}}
+    <div class="flex items-center gap-2 py-2">
+        <div class="flex-1 border-t border-orange-500/50"></div>
+        <span class="text-xs text-orange-400 px-2">context compacted</span>
+        <div class="flex-1 border-t border-orange-500/50"></div>
+    </div>
+    {{end}}
+
+    {{/* User message */}}
+    {{if .UserText}}
+    <div class="flex gap-3">
+        <div class="flex-shrink-0 w-8 h-8 rounded-full bg-blue-900 flex items-center justify-center text-xs text-blue-300 font-bold mt-1">U</div>
+        <div class="flex-1 min-w-0">
+            <div class="bg-blue-900/30 border border-blue-800/50 rounded-lg px-4 py-3">
+                {{if .IsCompactSummary}}
+                <div class="text-xs text-orange-400 mb-2">resumed from compaction</div>
+                {{end}}
+                <pre class="text-sm text-gray-200 whitespace-pre-wrap">{{.UserText}}</pre>
+            </div>
+            <div class="text-xs text-gray-600 mt-1">
+                {{formatTime .Timestamp}}
+            </div>
+        </div>
+    </div>
+    {{end}}
+
+    {{/* Assistant response */}}
+    {{if or .AssistantText .ThinkingText (gt (len .ToolCalls) 0)}}
+    <div class="flex gap-3">
+        <div class="flex-shrink-0 w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-xs text-gray-300 font-bold mt-1">A</div>
+        <div class="flex-1 min-w-0 space-y-2">
+            {{/* Thinking block (collapsible) */}}
+            {{if .ThinkingText}}
+            <details class="bg-purple-900/20 border border-purple-800/30 rounded-lg overflow-hidden">
+                <summary class="px-4 py-2 text-xs text-purple-400 hover:bg-purple-900/30 transition-colors flex items-center gap-2">
+                    <svg class="w-3 h-3 transition-transform" style="transform: rotate(0deg)" viewBox="0 0 12 12"><path d="M4 2l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+                    thinking
+                </summary>
+                <div class="px-4 py-3 border-t border-purple-800/30">
+                    <pre class="text-xs text-purple-300/80 whitespace-pre-wrap max-h-96 overflow-y-auto">{{truncate .ThinkingText 4000}}</pre>
+                </div>
+            </details>
+            {{end}}
+
+            {{/* Tool calls */}}
+            {{range .ToolCalls}}
+            {{template "tool_call" .}}
+            {{end}}
+
+            {{/* Text response */}}
+            {{if .AssistantText}}
+            <div class="bg-surface-800 border border-gray-700 rounded-lg px-4 py-3">
+                <pre class="text-sm text-gray-200 whitespace-pre-wrap">{{.AssistantText}}</pre>
+            </div>
+            {{end}}
+
+            {{/* Turn metadata with waterfall timing bar */}}
+            <div class="flex items-center gap-3 text-xs text-gray-600">
+                {{if .Model}}<span>{{.Model}}</span>{{end}}
+                {{if .Duration}}<span>{{formatDuration .Duration}}</span>{{end}}
+                {{if gt .InputTokens 0}}<span>in:{{formatTokens .InputTokens}}</span>{{end}}
+                {{if gt .OutputTokens 0}}<span>out:{{formatTokens .OutputTokens}}</span>{{end}}
+                {{if gt .Cost 0.0}}<span class="text-yellow-300">{{formatCost .Cost}}</span>{{end}}
+            </div>
+        </div>
+    </div>
+    {{end}}
+</div>
+{{end}}

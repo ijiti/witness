@@ -1,0 +1,73 @@
+{{define "base"}}<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.PageTitle}}</title>
+    <link rel="stylesheet" href="/static/tailwind.css">
+    <script src="/static/htmx.min.js"></script>
+    <script src="/static/live.js" defer></script>
+    <style>
+        body { font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace; }
+        details summary { cursor: pointer; list-style: none; }
+        details summary::-webkit-details-marker { display: none; }
+        .fade-in { animation: fadeIn 0.15s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        pre { white-space: pre-wrap; word-break: break-all; }
+    </style>
+</head>
+<body class="bg-surface-900 text-gray-100 min-h-screen flex">
+    {{template "sidebar" .}}
+    <main id="main-content" class="flex-1 ml-64 p-6 overflow-y-auto min-h-screen">
+        {{template "content" .}}
+    </main>
+</body>
+</html>
+{{end}}
+
+{{define "sidebar"}}
+<aside class="w-64 bg-surface-800 border-r border-gray-700 fixed inset-y-0 left-0 overflow-y-auto">
+    <div class="p-4 border-b border-gray-700">
+        <a href="/dashboard"
+           hx-get="/dashboard"
+           hx-target="#main-content"
+           hx-push-url="true"
+           class="text-lg font-bold text-gray-100 hover:text-white no-underline">witness</a>
+        <p class="text-xs text-gray-500 mt-1">session viewer</p>
+    </div>
+    <div class="px-3 pb-3">
+        <form action="/search" method="get"
+              hx-get="/search"
+              hx-target="#main-content"
+              hx-push-url="true">
+            <input type="text" name="q"
+                   placeholder="Search..."
+                   class="w-full px-3 py-1.5 bg-surface-900 border border-gray-700 rounded text-xs text-gray-300 placeholder-gray-600 focus:outline-none focus:border-blue-500">
+        </form>
+    </div>
+    <div class="px-3 pb-2">
+        <a href="/compare"
+           hx-get="/compare"
+           hx-target="#main-content"
+           hx-push-url="true"
+           class="block px-3 py-1.5 text-sm text-gray-400 hover:text-gray-200 hover:bg-surface-700 rounded transition-colors">Compare</a>
+    </div>
+    <nav class="p-2">
+        {{if .Projects}}
+        {{range .Projects}}
+        <a href="/projects/{{.ID}}"
+           hx-get="/projects/{{.ID}}"
+           hx-target="#main-content"
+           hx-push-url="true"
+           class="block px-3 py-2 rounded text-sm hover:bg-surface-700 transition-colors
+                  {{if eq $.ActiveProject .ID}}bg-surface-700 text-white{{else}}text-gray-400{{end}}">
+            <div class="font-medium">{{.DisplayName}}</div>
+            <div class="text-xs text-gray-500 mt-0.5">{{.SessionCount}} sessions</div>
+        </a>
+        {{end}}
+        {{else}}
+        <p class="px-3 py-2 text-sm text-gray-500">No projects found</p>
+        {{end}}
+    </nav>
+</aside>
+{{end}}
