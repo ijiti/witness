@@ -182,6 +182,12 @@ func ParseTemplates() map[string]*template.Template {
 			}
 			return a / b
 		},
+		"mod": func(a, b int) int {
+			if b == 0 {
+				return 0
+			}
+			return a % b
+		},
 		"seq": func(n int) []int {
 			s := make([]int, n)
 			for i := range s {
@@ -223,6 +229,16 @@ func ParseTemplates() map[string]*template.Template {
 				w = 1
 			}
 			return w
+		},
+		"costBarHeight": func(cost, max float64, barPx int) int {
+			if max <= 0 {
+				return 0
+			}
+			h := int(cost / max * float64(barPx))
+			if h < 1 && cost > 0 {
+				h = 1
+			}
+			return h
 		},
 	}
 
