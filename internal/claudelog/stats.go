@@ -180,6 +180,25 @@ func (sc *StatsCache) MaxDailyCost() float64 {
 	return max
 }
 
+// RoundedMaxDailyCost returns a nice round axis maximum at or above the real
+// peak, so the y-axis label is a clean tick ("$1400") rather than the raw
+// computed peak ("$1331.51"). Bars scaled against this max stop short of the
+// top of the plot area, matching Stripe/Linear chart conventions.
+func (sc *StatsCache) RoundedMaxDailyCost() float64 {
+	max := sc.MaxDailyCost()
+	if max <= 0 {
+		return 0
+	}
+	step := 100.0
+	if max < 100 {
+		step = 10.0
+	} else if max < 500 {
+		step = 50.0
+	}
+	rounded := (float64(int(max/step)) + 1) * step
+	return rounded
+}
+
 
 // shortModelName strips common prefixes for compact display.
 func shortModelName(model string) string {
