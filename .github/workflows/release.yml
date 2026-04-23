@@ -52,7 +52,7 @@ jobs:
           EXT: ${{ matrix.ext }}
         run: |
           mkdir -p dist
-          go build -ldflags='-s -w' \
+          go build -ldflags="-s -w -X 'github.com/ijiti/witness/internal/build.BuildID=${{ github.ref_name }}'" \
             -o "dist/witness-${GOOS}-${GOARCH}${EXT}" \
             ./cmd/witness/
       - uses: actions/upload-artifact@v4

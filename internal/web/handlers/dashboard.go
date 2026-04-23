@@ -17,13 +17,13 @@ func (h *Handlers) Dashboard(w http.ResponseWriter, r *http.Request) {
 
 	if stats != nil {
 		// ETag on the fresh compute timestamp — changes whenever we recompute.
-		if CheckETag(w, r, freshTime) {
+		if h.CheckETag(w, r, freshTime) {
 			return
 		}
 	} else {
 		// Fresh compute not done yet — fall back to stats-cache.json.
 		stats = h.disc.GetStats()
-		if CheckETag(w, r, h.disc.StatsFileMtime()) {
+		if h.CheckETag(w, r, h.disc.StatsFileMtime()) {
 			return
 		}
 	}

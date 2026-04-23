@@ -1,0 +1,16 @@
+{{define "content"}}
+<div class="fade-in flex items-center justify-center min-h-[60vh]">
+    <div class="bg-surface-800 rounded-lg border border-gray-700 p-8 max-w-md w-full text-center">
+        <div class="text-5xl font-bold text-gray-600 mb-4">{{.StatusCode}}</div>
+        <h2 class="text-lg font-bold text-gray-200 mb-2">{{.Headline}}</h2>
+        <p class="text-sm text-gray-500">{{.Detail}}</p>
+        <div class="mt-6">
+            <a href="/dashboard"
+               hx-get="/dashboard"
+               hx-target="#main-content"
+               hx-push-url="true"
+               class="text-sm text-blue-400 hover:text-blue-300 no-underline">back to dashboard</a>
+        </div>
+    </div>
+</div>
+{{end}}

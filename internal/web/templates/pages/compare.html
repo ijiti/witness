@@ -5,7 +5,23 @@
         <p class="text-sm text-gray-500 mt-1">Side-by-side session analysis</p>
     </div>
 
-    {{/* --- Session Picker --- */}}
+    {{/* --- Session Picker (hidden once a comparison is loaded) --- */}}
+    {{if .Comparison}}
+    {{$c := .Comparison}}
+    <div class="bg-surface-800 rounded-lg border border-gray-700 px-4 py-2 mb-4 flex items-center justify-between">
+        <span class="text-sm text-gray-300">
+            Comparing
+            <span class="text-blue-400 font-medium">{{truncate $c.SessionA.Title 40}}</span>
+            <span class="text-gray-500 mx-1">vs</span>
+            <span class="text-green-400 font-medium">{{truncate $c.SessionB.Title 40}}</span>
+        </span>
+        <a href="/compare"
+           hx-get="/compare"
+           hx-target="#main-content"
+           hx-push-url="true"
+           class="text-xs text-gray-400 hover:text-gray-200 no-underline ml-4 shrink-0">change selection</a>
+    </div>
+    {{else}}
     <div class="bg-surface-800 rounded-lg border border-gray-700 p-4 mb-6">
         <form hx-get="/compare"
               hx-target="#main-content"
@@ -13,41 +29,41 @@
               class="grid grid-cols-1 md:grid-cols-2 gap-4">
             {{/* Session A */}}
             <div>
-                <label class="text-xs text-gray-500 block mb-1">Session A</label>
+                <label class="text-xs text-gray-300 block mb-1">Session A</label>
                 <select name="project"
                         hx-get="/compare/sessions"
                         hx-target="#sessions-a"
                         hx-trigger="change"
                         hx-swap="innerHTML"
-                        class="w-full px-3 py-1.5 bg-surface-900 border border-gray-700 rounded text-xs text-gray-300 focus:outline-none focus:border-blue-500">
-                    <option value="">Select project...</option>
+                        class="w-full px-3 py-1.5 bg-surface-900 border border-gray-700 rounded text-xs text-gray-200 focus:outline-none focus:border-blue-500">
+                    <option value="" class="text-gray-200">Select project...</option>
                     {{range .Projects}}
                     <option value="{{.ID}}">{{.DisplayName}} ({{.SessionCount}})</option>
                     {{end}}
                 </select>
                 <select name="a" id="sessions-a"
-                        class="w-full mt-2 px-3 py-1.5 bg-surface-900 border border-gray-700 rounded text-xs text-gray-300 focus:outline-none focus:border-blue-500">
-                    <option value="">Select session...</option>
+                        class="w-full mt-2 px-3 py-1.5 bg-surface-900 border border-gray-700 rounded text-xs text-gray-200 focus:outline-none focus:border-blue-500">
+                    <option value="" class="text-gray-200">Select session...</option>
                 </select>
             </div>
 
             {{/* Session B */}}
             <div>
-                <label class="text-xs text-gray-500 block mb-1">Session B</label>
+                <label class="text-xs text-gray-300 block mb-1">Session B</label>
                 <select name="project"
                         hx-get="/compare/sessions"
                         hx-target="#sessions-b"
                         hx-trigger="change"
                         hx-swap="innerHTML"
-                        class="w-full px-3 py-1.5 bg-surface-900 border border-gray-700 rounded text-xs text-gray-300 focus:outline-none focus:border-blue-500">
-                    <option value="">Select project...</option>
+                        class="w-full px-3 py-1.5 bg-surface-900 border border-gray-700 rounded text-xs text-gray-200 focus:outline-none focus:border-blue-500">
+                    <option value="" class="text-gray-200">Select project...</option>
                     {{range .Projects}}
                     <option value="{{.ID}}">{{.DisplayName}} ({{.SessionCount}})</option>
                     {{end}}
                 </select>
                 <select name="b" id="sessions-b"
-                        class="w-full mt-2 px-3 py-1.5 bg-surface-900 border border-gray-700 rounded text-xs text-gray-300 focus:outline-none focus:border-blue-500">
-                    <option value="">Select session...</option>
+                        class="w-full mt-2 px-3 py-1.5 bg-surface-900 border border-gray-700 rounded text-xs text-gray-200 focus:outline-none focus:border-blue-500">
+                    <option value="" class="text-gray-200">Select session...</option>
                 </select>
             </div>
 
@@ -59,6 +75,7 @@
             </div>
         </form>
     </div>
+    {{end}}
 
     {{if .Comparison}}
     {{$c := .Comparison}}

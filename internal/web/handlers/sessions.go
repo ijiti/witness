@@ -19,9 +19,9 @@ func (h *Handlers) SessionList(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("list sessions for %s: %v", projectID, err)
 		if os.IsNotExist(err) {
-			http.Error(w, "project not found", http.StatusNotFound)
+			h.renderError(w, r, http.StatusNotFound, "Project not found", "Project "+projectID+" does not exist")
 		} else {
-			http.Error(w, "bad request", http.StatusBadRequest)
+			h.renderError(w, r, http.StatusBadRequest, "Bad request", "Could not list sessions for project "+projectID)
 		}
 		return
 	}
@@ -53,7 +53,7 @@ func (h *Handlers) SessionDetail(w http.ResponseWriter, r *http.Request) {
 	sessionID := chi.URLParam(r, "sessionID")
 
 	// ETag based on session file mtime.
-	if CheckETag(w, r, h.disc.SessionFileMtime(projectID, sessionID)) {
+	if h.CheckETag(w, r, h.disc.SessionFileMtime(projectID, sessionID)) {
 		return
 	}
 
@@ -61,9 +61,9 @@ func (h *Handlers) SessionDetail(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("get session %s/%s: %v", projectID, sessionID, err)
 		if os.IsNotExist(err) {
-			http.Error(w, "session not found", http.StatusNotFound)
+			h.renderError(w, r, http.StatusNotFound, "Session not found", "Session "+sessionID+" does not exist")
 		} else {
-			http.Error(w, "bad request", http.StatusBadRequest)
+			h.renderError(w, r, http.StatusBadRequest, "Bad request", "Could not load session "+sessionID)
 		}
 		return
 	}
@@ -117,12 +117,18 @@ func (h *Handlers) SubagentDetail(w http.ResponseWriter, r *http.Request) {
 
 	session, err := h.disc.GetSubagentSession(projectID, sessionID, agentID)
 	if err != nil {
-		http.Error(w, "subagent not found", http.StatusNotFound)
+		h.renderError(w, r, http.StatusNotFound, "Subagent not found", "Subagent "+agentID+" does not exist")
 		return
 	}
 
 	if session.AgentSetting != "" {
 		session.AgentPersona = h.disc.GetAgentPersona(session.AgentSetting)
+	}
+
+	// Extract the task brief from the first user turn (the prompt that spawned this subagent).
+	var taskBrief string
+	if len(session.Turns) > 0 {
+		taskBrief = session.Turns[0].UserText
 	}
 
 	projects, _ := h.disc.ListProjects()
@@ -132,6 +138,7 @@ func (h *Handlers) SubagentDetail(w http.ResponseWriter, r *http.Request) {
 		"ProjectID":       projectID,
 		"ParentSessionID": sessionID,
 		"IsSubagent":      true,
+		"TaskBrief":       taskBrief,
 		"AgentID":         agentID,
 		"PageTitle":       "witness - agent " + agentID,
 		"ActiveProject":   projectID,
@@ -152,7 +159,7 @@ func (h *Handlers) SessionTurns(w http.ResponseWriter, r *http.Request) {
 
 	session, err := h.disc.GetSession(projectID, sessionID)
 	if err != nil {
-		http.Error(w, "session not found", http.StatusNotFound)
+		h.renderError(w, r, http.StatusNotFound, "Session not found", "Session "+sessionID+" does not exist")
 		return
 	}
 
@@ -170,7 +177,7 @@ func (h *Handlers) SessionTurns(w http.ResponseWriter, r *http.Request) {
 	// Render each turn partial.
 	t, ok := h.pages["session"]
 	if !ok {
-		http.Error(w, "template error", http.StatusInternalServerError)
+		h.renderError(w, r, http.StatusInternalServerError, "Template error", "session template not found")
 		return
 	}
 
@@ -204,19 +211,19 @@ func (h *Handlers) SessionPlan(w http.ResponseWriter, r *http.Request) {
 
 	session, err := h.disc.GetSession(projectID, sessionID)
 	if err != nil {
-		http.Error(w, "session not found", http.StatusNotFound)
+		h.renderError(w, r, http.StatusNotFound, "Session not found", "Session "+sessionID+" does not exist")
 		return
 	}
 
 	planPath := h.disc.ResolvePlan(session.Slug)
 	if planPath == "" {
-		http.Error(w, "no plan found", http.StatusNotFound)
+		h.renderError(w, r, http.StatusNotFound, "No plan found", "No plan file is associated with this session")
 		return
 	}
 
 	planData, err := os.ReadFile(planPath)
 	if err != nil {
-		http.Error(w, "error reading plan", http.StatusInternalServerError)
+		h.renderError(w, r, http.StatusInternalServerError, "Plan unreadable", "Could not read the plan file")
 		return
 	}
 	content := string(planData)

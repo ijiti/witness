@@ -171,6 +171,7 @@ func ParseTemplates() map[string]*template.Template {
 		// Rendering functions.
 		"renderDiff":    render.RenderDiffHTML,
 		"highlightCode": render.HighlightCode,
+		"markdown":      render.Markdown,
 
 		// Dashboard chart helpers.
 		"mul": func(a, b int) int { return a * b },
@@ -266,7 +267,7 @@ func formatTime(t time.Time) string {
 
 func formatDuration(d time.Duration) string {
 	if d == 0 {
-		return ""
+		return "—" // em-dash — never leaves a metric card blank
 	}
 	sec := int(d.Seconds())
 	if sec < 60 {

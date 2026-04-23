@@ -16,6 +16,25 @@
         /* Wrap long content but never chop English words mid-letter; only break
            genuinely unbreakable strings (URLs, hex blobs) when they overflow. */
         pre { white-space: pre-wrap; overflow-wrap: anywhere; word-break: normal; }
+        /* Markdown-rendered task brief prose styles */
+        .markdown-brief p { margin: 0 0 0.5rem 0; }
+        .markdown-brief p:last-child { margin-bottom: 0; }
+        .markdown-brief strong { color: #e5e7eb; font-weight: 600; }
+        .markdown-brief em { color: #d1d5db; }
+        .markdown-brief code { background: rgba(55,65,81,0.6); padding: 0.1em 0.35em; border-radius: 3px; font-size: 0.85em; font-family: ui-monospace, monospace; }
+        .markdown-brief pre { background: rgba(17,24,39,0.7); border: 1px solid #374151; border-radius: 4px; padding: 0.75rem; margin: 0.5rem 0; }
+        .markdown-brief pre code { background: none; padding: 0; }
+        .markdown-brief ul, .markdown-brief ol { padding-left: 1.5rem; margin: 0.5rem 0; }
+        .markdown-brief li { margin: 0.2rem 0; }
+        .markdown-brief h1, .markdown-brief h2, .markdown-brief h3 { color: #f3f4f6; font-weight: 600; margin: 0.75rem 0 0.25rem; }
+        .markdown-brief h1 { font-size: 1.1em; }
+        .markdown-brief h2 { font-size: 1.0em; }
+        .markdown-brief h3 { font-size: 0.95em; }
+        .markdown-brief table { border-collapse: collapse; width: 100%; margin: 0.5rem 0; font-size: 0.875em; }
+        .markdown-brief th, .markdown-brief td { border: 1px solid #374151; padding: 0.25rem 0.5rem; }
+        .markdown-brief th { background: rgba(55,65,81,0.5); color: #d1d5db; }
+        .markdown-brief a { color: #60a5fa; text-decoration: none; }
+        .markdown-brief a:hover { text-decoration: underline; }
     </style>
 </head>
 <body class="bg-surface-900 text-gray-100 min-h-screen flex">

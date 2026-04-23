@@ -2,7 +2,6 @@ package web
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -117,31 +116,46 @@ func marshalJSON(v interface{}) string {
 }
 
 // TestCheckETag_Match tests that matching ETag returns 304.
+// CheckETag is now a method on *Handlers; the ETag incorporates the build
+// namespace so we obtain the tag by first issuing a request without
+// If-None-Match, reading the ETag header, then replaying it.
 func TestCheckETag_Match(t *testing.T) {
+	h := setupTestEnv(t)
 	mtime := time.Date(2026, 2, 20, 10, 0, 0, 0, time.UTC)
-	etag := fmt.Sprintf(`"%x"`, mtime.UnixNano())
 
-	r := httptest.NewRequest("GET", "/", nil)
-	r.Header.Set("If-None-Match", etag)
-	w := httptest.NewRecorder()
+	// First request: no If-None-Match — should set ETag header.
+	w1 := httptest.NewRecorder()
+	r1 := httptest.NewRequest("GET", "/", nil)
+	if h.CheckETag(w1, r1, mtime) {
+		t.Error("CheckETag returned true without If-None-Match header")
+	}
+	etag := w1.Header().Get("ETag")
+	if etag == "" {
+		t.Fatal("ETag header not set on first request")
+	}
 
-	if !handlers.CheckETag(w, r, mtime) {
+	// Second request: replay the ETag — should get 304.
+	w2 := httptest.NewRecorder()
+	r2 := httptest.NewRequest("GET", "/", nil)
+	r2.Header.Set("If-None-Match", etag)
+	if !h.CheckETag(w2, r2, mtime) {
 		t.Error("CheckETag returned false, want true for matching ETag")
 	}
-	if w.Code != http.StatusNotModified {
-		t.Errorf("status = %d, want %d", w.Code, http.StatusNotModified)
+	if w2.Code != http.StatusNotModified {
+		t.Errorf("status = %d, want %d", w2.Code, http.StatusNotModified)
 	}
 }
 
 // TestCheckETag_NoMatch tests that non-matching ETag returns false.
 func TestCheckETag_NoMatch(t *testing.T) {
+	h := setupTestEnv(t)
 	mtime := time.Date(2026, 2, 20, 10, 0, 0, 0, time.UTC)
 
 	r := httptest.NewRequest("GET", "/", nil)
 	r.Header.Set("If-None-Match", `"wrong"`)
 	w := httptest.NewRecorder()
 
-	if handlers.CheckETag(w, r, mtime) {
+	if h.CheckETag(w, r, mtime) {
 		t.Error("CheckETag returned true, want false for non-matching ETag")
 	}
 	if w.Header().Get("ETag") == "" {
@@ -151,12 +165,13 @@ func TestCheckETag_NoMatch(t *testing.T) {
 
 // TestCheckETag_NoHeader tests missing If-None-Match header.
 func TestCheckETag_NoHeader(t *testing.T) {
+	h := setupTestEnv(t)
 	mtime := time.Date(2026, 2, 20, 10, 0, 0, 0, time.UTC)
 
 	r := httptest.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()
 
-	if handlers.CheckETag(w, r, mtime) {
+	if h.CheckETag(w, r, mtime) {
 		t.Error("CheckETag returned false, want false for missing header")
 	}
 	if w.Header().Get("ETag") == "" {
@@ -166,10 +181,11 @@ func TestCheckETag_NoHeader(t *testing.T) {
 
 // TestCheckETag_ZeroTime tests zero mtime skips ETag.
 func TestCheckETag_ZeroTime(t *testing.T) {
+	h := setupTestEnv(t)
 	r := httptest.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()
 
-	if handlers.CheckETag(w, r, time.Time{}) {
+	if h.CheckETag(w, r, time.Time{}) {
 		t.Error("CheckETag returned true for zero mtime")
 	}
 }

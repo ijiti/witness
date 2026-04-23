@@ -3,3 +3,5 @@ module github.com/ijiti/witness
 go 1.22.0
 
 require github.com/go-chi/chi/v5 v5.2.5
+
+require github.com/yuin/goldmark v1.8.2

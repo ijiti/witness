@@ -51,13 +51,13 @@ func (h *Handlers) Compare(w http.ResponseWriter, r *http.Request) {
 	sessA, err := h.loadSessionFromParam(paramA)
 	if err != nil {
 		log.Printf("compare: load session A %q: %v", paramA, err)
-		http.Error(w, "session A not found", http.StatusNotFound)
+		h.renderError(w, r, http.StatusNotFound, "Session not found", "Session A could not be loaded: "+paramA)
 		return
 	}
 	sessB, err := h.loadSessionFromParam(paramB)
 	if err != nil {
 		log.Printf("compare: load session B %q: %v", paramB, err)
-		http.Error(w, "session B not found", http.StatusNotFound)
+		h.renderError(w, r, http.StatusNotFound, "Session not found", "Session B could not be loaded: "+paramB)
 		return
 	}
 
@@ -93,7 +93,7 @@ func (h *Handlers) CompareSessions(w http.ResponseWriter, r *http.Request) {
 
 	t, ok := h.pages["compare"]
 	if !ok {
-		http.Error(w, "template error", http.StatusInternalServerError)
+		h.renderError(w, r, http.StatusInternalServerError, "Template error", "compare template not found")
 		return
 	}
 
