@@ -7,8 +7,10 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/ijiti/witness/internal/discovery"
 )
 
 // SessionList renders the session list for a project.
@@ -40,6 +42,7 @@ func (h *Handlers) SessionList(w http.ResponseWriter, r *http.Request) {
 	h.render(w, r, "index", map[string]any{
 		"Projects":      projects,
 		"Sessions":      sessions,
+		"SessionGroups": discovery.GroupSessionsByDate(sessions, time.Now()),
 		"ProjectID":     projectID,
 		"ProjectName":   projectName,
 		"PageTitle":     "witness - " + projectName,
