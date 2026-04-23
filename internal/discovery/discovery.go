@@ -37,6 +37,167 @@ type Project struct {
 	LastActive   time.Time
 }
 
+// ProjectGroup nests worktree-style child projects under their filesystem
+// parent so the sidebar can fold them away. Children are projects whose CWD
+// is a strict subpath of another project's CWD; ungrouped projects appear as
+// groups with no children.
+type ProjectGroup struct {
+	Project           // the top-level (parent) project
+	Children []Project
+}
+
+// HasChildren reports whether the group has nested worktrees.
+func (g ProjectGroup) HasChildren() bool { return len(g.Children) > 0 }
+
+// TotalSessions sums sessions across the group (parent + all children).
+func (g ProjectGroup) TotalSessions() int {
+	n := g.SessionCount
+	for _, c := range g.Children {
+		n += c.SessionCount
+	}
+	return n
+}
+
+// GroupProjects nests worktree-style projects under their logical parent so
+// the sidebar can fold them away. Two heuristics, in precedence order:
+//
+//  1. **Path-prefix nesting** — a project whose CWD is a strict descendant of
+//     another project's CWD (e.g. `/repo/.git/worktrees/branch` under `/repo`).
+//
+//  2. **Sibling-worktree convention** — a project whose path contains a
+//     `/worktrees/` (or `/.git/worktrees/`) segment AND whose basename starts
+//     with `<otherProject>-` is nested under that other project. Catches the
+//     common `~/worktrees/<repo>-<branch>` and `~/<repo>-worktrees/<branch>`
+//     layouts.
+//
+// Ungrouped projects appear as groups with no children. Top-level groups
+// preserve the input slice's activity ordering; children are sorted most-recent
+// first within each group.
+func GroupProjects(projects []Project) []ProjectGroup {
+	if len(projects) == 0 {
+		return nil
+	}
+
+	originalIdx := make(map[string]int, len(projects))
+	for i, p := range projects {
+		originalIdx[p.ID] = i
+	}
+
+	// Resolve each project's parent CWD (empty == top-level).
+	parentOf := make(map[string]string, len(projects))
+	for _, p := range projects {
+		parentOf[p.CWD] = findParent(p, projects)
+	}
+
+	// A worktree's parent might itself be a worktree (rare). Walk up to the
+	// root parent so we never produce two-deep nesting in the sidebar — flatten
+	// into a single layer of children under the topmost ancestor.
+	for cwd := range parentOf {
+		seen := map[string]bool{cwd: true}
+		for {
+			next, ok := parentOf[parentOf[cwd]]
+			if !ok || next == "" || seen[next] {
+				break
+			}
+			seen[parentOf[cwd]] = true
+			parentOf[cwd] = parentOf[parentOf[cwd]]
+		}
+	}
+
+	type indexed struct {
+		Project
+		idx int
+	}
+	var parents []indexed
+	children := make(map[string][]Project)
+
+	for _, p := range projects {
+		if pcwd := parentOf[p.CWD]; pcwd != "" {
+			children[pcwd] = append(children[pcwd], p)
+		} else {
+			parents = append(parents, indexed{Project: p, idx: originalIdx[p.ID]})
+		}
+	}
+
+	// Top-level: preserve activity order.
+	sort.SliceStable(parents, func(i, j int) bool { return parents[i].idx < parents[j].idx })
+	// Children: most-recent-active first within each group.
+	for cwd, kids := range children {
+		sort.SliceStable(kids, func(i, j int) bool { return kids[i].LastActive.After(kids[j].LastActive) })
+		children[cwd] = kids
+	}
+
+	out := make([]ProjectGroup, len(parents))
+	for i, p := range parents {
+		out[i] = ProjectGroup{Project: p.Project, Children: children[p.CWD]}
+	}
+	return out
+}
+
+// findParent returns p's logical parent CWD, or "" if p is top-level.
+func findParent(p Project, all []Project) string {
+	// Heuristic 1: longest strict path prefix.
+	var bestPrefix string
+	for _, other := range all {
+		if other.CWD == p.CWD {
+			continue
+		}
+		if isPathChild(p.CWD, other.CWD) && len(other.CWD) > len(bestPrefix) {
+			bestPrefix = other.CWD
+		}
+	}
+	if bestPrefix != "" {
+		return bestPrefix
+	}
+
+	// Heuristic 2: sibling-worktree naming. Only applies if p's path contains
+	// a worktrees segment, to avoid grouping unrelated projects with similar
+	// basenames (e.g. `mytool` and `mytool-experimental` are NOT a worktree pair).
+	if !looksLikeWorktreePath(p.CWD) {
+		return ""
+	}
+	myBase := filepath.Base(p.CWD)
+	// Prefer the longest matching parent name (`mytool-frontend-task-x` should
+	// nest under `mytool-frontend`, not `mytool`).
+	var bestParentCWD string
+	bestBaseLen := 0
+	for _, other := range all {
+		if other.CWD == p.CWD {
+			continue
+		}
+		otherBase := filepath.Base(other.CWD)
+		if otherBase == "" || otherBase == "/" {
+			continue
+		}
+		if strings.HasPrefix(myBase, otherBase+"-") && len(otherBase) > bestBaseLen {
+			bestBaseLen = len(otherBase)
+			bestParentCWD = other.CWD
+		}
+	}
+	return bestParentCWD
+}
+
+// isPathChild reports whether childCWD is a strict descendant of parentCWD.
+func isPathChild(childCWD, parentCWD string) bool {
+	if parentCWD == "" || parentCWD == "/" || childCWD == parentCWD {
+		return false
+	}
+	if !strings.HasPrefix(childCWD, parentCWD) {
+		return false
+	}
+	rest := childCWD[len(parentCWD):]
+	return len(rest) > 0 && (rest[0] == '/' || rest[0] == '\\')
+}
+
+// looksLikeWorktreePath returns true for paths that look like git/branch
+// worktrees by convention. Used to gate the sibling-naming heuristic.
+func looksLikeWorktreePath(cwd string) bool {
+	return strings.Contains(cwd, "/worktrees/") ||
+		strings.Contains(cwd, "/.git/worktrees/") ||
+		strings.Contains(cwd, "\\worktrees\\") ||
+		strings.Contains(cwd, "\\.git\\worktrees\\")
+}
+
 // SessionEntry is a discovered session file.
 type SessionEntry struct {
 	ID      string

@@ -53,17 +53,51 @@
            class="block px-3 py-1.5 text-sm text-gray-400 hover:text-gray-200 hover:bg-surface-700 rounded transition-colors">Compare</a>
     </div>
     <nav class="p-2">
-        {{if .Projects}}
-        {{range .Projects}}
+        {{if .ProjectGroups}}
+        {{range .ProjectGroups}}
+        {{if .HasChildren}}
+        {{$activeChild := false}}
+        {{range .Children}}{{if eq $.ActiveProject .ID}}{{$activeChild = true}}{{end}}{{end}}
+        <details class="mb-1" {{if or (eq $.ActiveProject .ID) $activeChild}}open{{end}}>
+            <summary class="flex items-center gap-1 px-3 py-2 rounded text-sm cursor-pointer hover:bg-surface-700 transition-colors text-gray-400 select-none
+                            {{if eq $.ActiveProject .ID}}bg-surface-700 text-white{{end}}">
+                <svg class="w-3 h-3 transition-transform shrink-0 -rotate-90 group-open:rotate-0" fill="none" viewBox="0 0 12 12" aria-hidden="true">
+                    <path d="M3 4.5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <a href="/projects/{{.ID}}"
+                   hx-get="/projects/{{.ID}}"
+                   hx-target="#main-content"
+                   hx-push-url="true"
+                   class="flex-1 min-w-0 block no-underline text-inherit"
+                   onclick="event.stopPropagation()">
+                    <div class="font-medium truncate">{{.DisplayName}}</div>
+                    <div class="text-xs text-gray-500 mt-0.5">{{.SessionCount}} sessions <span class="text-gray-600">· {{len .Children}} worktree{{if ne (len .Children) 1}}s{{end}}</span></div>
+                </a>
+            </summary>
+            <div class="ml-4 pl-2 border-l border-gray-700 mt-0.5">
+                {{range .Children}}
+                <a href="/projects/{{.ID}}"
+                   hx-get="/projects/{{.ID}}"
+                   hx-target="#main-content"
+                   hx-push-url="true"
+                   class="block px-3 py-1.5 rounded text-xs hover:bg-surface-700 transition-colors
+                          {{if eq $.ActiveProject .ID}}bg-surface-700 text-white{{else}}text-gray-500{{end}}">
+                    <div class="truncate">{{.DisplayName}}</div>
+                </a>
+                {{end}}
+            </div>
+        </details>
+        {{else}}
         <a href="/projects/{{.ID}}"
            hx-get="/projects/{{.ID}}"
            hx-target="#main-content"
            hx-push-url="true"
            class="block px-3 py-2 rounded text-sm hover:bg-surface-700 transition-colors
                   {{if eq $.ActiveProject .ID}}bg-surface-700 text-white{{else}}text-gray-400{{end}}">
-            <div class="font-medium">{{.DisplayName}}</div>
+            <div class="font-medium truncate">{{.DisplayName}}</div>
             <div class="text-xs text-gray-500 mt-0.5">{{.SessionCount}} sessions</div>
         </a>
+        {{end}}
         {{end}}
         {{else}}
         <p class="px-3 py-2 text-sm text-gray-500">No projects found</p>

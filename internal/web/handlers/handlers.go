@@ -38,9 +38,16 @@ func (h *Handlers) render(w http.ResponseWriter, r *http.Request, page string, d
 
 	// Inject project list for sidebar on full page loads.
 	if tmplName == "base" {
+		// Always derive ProjectGroups from Projects so the sidebar gets a
+		// consistent grouped view regardless of which handler set Projects.
 		if _, exists := data["Projects"]; !exists {
 			if projects, err := h.disc.ListProjects(); err == nil {
 				data["Projects"] = projects
+			}
+		}
+		if _, exists := data["ProjectGroups"]; !exists {
+			if projects, ok := data["Projects"].([]discovery.Project); ok {
+				data["ProjectGroups"] = discovery.GroupProjects(projects)
 			}
 		}
 	}
