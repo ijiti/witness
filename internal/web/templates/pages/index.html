@@ -6,10 +6,16 @@
         <p class="text-sm text-gray-500 mt-1">{{len .Sessions}} sessions</p>
     </div>
 
-    <div id="session-list" class="space-y-4">
+    <div id="session-list" class="space-y-6">
         {{range .SessionGroups}}
-        <div class="space-y-1">
-            <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-500 px-1 pb-1">
+        <div class="space-y-1 pt-4 border-t border-gray-800/60 first:pt-0 first:border-t-0">
+            {{/* Recency ramp: today gets the brightest header, older groups
+                 progressively dim so the eye lands on "today" work first. */}}
+            <h3 class="text-xs font-semibold uppercase tracking-wider px-1 pb-1
+                       {{if eq .Label "Today"}}text-gray-300
+                       {{else if eq .Label "Yesterday"}}text-gray-400
+                       {{else if eq .Label "This week"}}text-gray-500
+                       {{else}}text-gray-600{{end}}">
                 {{.Label}}
                 <span class="text-gray-600 font-normal normal-case tracking-normal ml-1">· {{len .Sessions}}</span>
             </h3>

@@ -99,7 +99,7 @@
                    class="flex-1 min-w-0 block no-underline text-inherit"
                    onclick="event.stopPropagation()">
                     <div class="flex items-center gap-1.5">
-                        <span class="activity-dot w-1.5 h-1.5 rounded-full bg-green-400 shrink-0 {{if not .GroupActive}}hidden{{end}}" aria-label="active"></span>
+                        <span class="activity-dot w-2 h-2 rounded-full bg-green-400 animate-pulse ring-1 ring-green-400/40 shrink-0 {{if not .GroupActive}}hidden{{end}}" aria-label="active"></span>
                         <div class="font-medium truncate">{{.DisplayName}}</div>
                     </div>
                     <div class="text-xs text-gray-500 mt-0.5">{{.SessionCount}} sessions <span class="text-gray-600">· {{len .Children}} worktree{{if ne (len .Children) 1}}s{{end}}</span></div>
@@ -114,7 +114,7 @@
                    data-project-id="{{.ID}}"
                    class="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs hover:bg-surface-700 transition-colors
                           {{if eq $.ActiveProject .ID}}bg-surface-700 text-white{{else}}text-gray-500{{end}}">
-                    <span class="activity-dot w-1.5 h-1.5 rounded-full bg-green-400 shrink-0 {{if not .Active}}hidden{{end}}" aria-label="active"></span>
+                    <span class="activity-dot w-2 h-2 rounded-full bg-green-400 animate-pulse ring-1 ring-green-400/40 shrink-0 {{if not .Active}}hidden{{end}}" aria-label="active"></span>
                     <span class="truncate">{{.DisplayName}}</span>
                 </a>
                 {{end}}
@@ -129,7 +129,7 @@
            class="block px-3 py-2 rounded text-sm hover:bg-surface-700 transition-colors
                   {{if eq $.ActiveProject .ID}}bg-surface-700 text-white{{else}}text-gray-400{{end}}">
             <div class="flex items-center gap-1.5">
-                <span class="activity-dot w-1.5 h-1.5 rounded-full bg-green-400 shrink-0 {{if not .Active}}hidden{{end}}" aria-label="active"></span>
+                <span class="activity-dot w-2 h-2 rounded-full bg-green-400 animate-pulse ring-1 ring-green-400/40 shrink-0 {{if not .Active}}hidden{{end}}" aria-label="active"></span>
                 <div class="font-medium truncate">{{.DisplayName}}</div>
             </div>
             <div class="text-xs text-gray-500 mt-0.5">{{.SessionCount}} sessions</div>
