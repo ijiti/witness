@@ -4,14 +4,29 @@ import (
 	"net/http"
 )
 
-// Dashboard renders the usage analytics dashboard from stats-cache.json.
+// Dashboard renders the usage analytics dashboard.
+//
+// It prefers fresh in-memory stats (recomputed from JSONL on startup and after
+// file-watcher events). While the background compute is still running on first
+// hit, it falls back to the file-based stats-cache.json so the page never
+// returns empty.
 func (h *Handlers) Dashboard(w http.ResponseWriter, r *http.Request) {
-	// ETag based on stats-cache.json mtime.
-	if CheckETag(w, r, h.disc.StatsFileMtime()) {
-		return
-	}
+	// Prefer fresh stats (computed from actual JSONL files).
+	stats := h.disc.GetFreshStats()
+	freshTime := h.disc.FreshStatsTime()
 
-	stats := h.disc.GetStats()
+	if stats != nil {
+		// ETag on the fresh compute timestamp — changes whenever we recompute.
+		if CheckETag(w, r, freshTime) {
+			return
+		}
+	} else {
+		// Fresh compute not done yet — fall back to stats-cache.json.
+		stats = h.disc.GetStats()
+		if CheckETag(w, r, h.disc.StatsFileMtime()) {
+			return
+		}
+	}
 
 	projects, _ := h.disc.ListProjects()
 

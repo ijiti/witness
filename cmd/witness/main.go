@@ -21,6 +21,11 @@ func main() {
 
 	disc := discovery.NewDiscoverer(claudeDir)
 
+	// Compute fresh stats in the background so startup doesn't block.
+	// GetFreshStats() returns nil until this goroutine completes; Dashboard
+	// falls back to the file-based GetStats() in that window.
+	go disc.ComputeFreshStats()
+
 	// Start file watcher for live monitoring.
 	if err := disc.StartWatching(); err != nil {
 		log.Printf("warning: file watcher disabled: %v", err)

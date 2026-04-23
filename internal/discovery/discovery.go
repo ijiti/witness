@@ -232,6 +232,11 @@ type Discoverer struct {
 	statsMu   sync.RWMutex
 	statsTime time.Time // mtime of stats-cache.json at last load
 
+	// In-memory fresh stats computed from actual JSONL files.
+	freshStats     *claudelog.StatsCache
+	freshStatsMu   sync.RWMutex
+	freshStatsTime time.Time // wall time when freshStats was last computed
+
 	// Live monitoring (session 3).
 	watcher     *Watcher
 	Broadcaster *Broadcaster
@@ -277,8 +282,16 @@ func (d *Discoverer) StopWatching() {
 	}
 }
 
+// statsRecomputeMinInterval is the minimum time between watcher-triggered
+// fresh-stats recomputes. Prevents recomputing 50 times during an active Claude
+// session that is writing many JSONL records per second.
+const statsRecomputeMinInterval = 60 * time.Second
+
 // processWatchEvents handles incoming inotify events.
 func (d *Discoverer) processWatchEvents() {
+	var lastRecompute time.Time
+	var recomputePending bool
+
 	for ev := range d.watcher.Events() {
 		// Invalidate cache for modified sessions.
 		if ev.Type == "modify" && ev.SessionID != "" {
@@ -286,6 +299,16 @@ func (d *Discoverer) processWatchEvents() {
 			d.mu.Lock()
 			delete(d.cache, cacheKey)
 			d.mu.Unlock()
+
+			// Schedule a debounced fresh-stats recompute.
+			if !recomputePending && time.Since(lastRecompute) >= statsRecomputeMinInterval {
+				recomputePending = true
+				go func() {
+					d.ComputeFreshStats() //nolint:errcheck — errors already logged inside
+					lastRecompute = time.Now()
+					recomputePending = false
+				}()
+			}
 		}
 
 		// Broadcast to all SSE clients.
@@ -589,6 +612,47 @@ func (d *Discoverer) SearchSessions(query string, offset, limit int) ([]claudelo
 	d.allHistoryMu.RUnlock()
 	results, total := claudelog.SearchHistory(entries, query, offset, limit)
 	return results, total, nil
+}
+
+// ComputeFreshStats walks all JSONL session files and builds a fresh StatsCache
+// in memory. It logs the duration and stores the result so GetFreshStats can
+// return it. Safe to call from multiple goroutines; only one compute runs at a
+// time (protected by freshStatsMu). This method is also the target for debounced
+// recompute after file-watcher events.
+func (d *Discoverer) ComputeFreshStats() error {
+	start := time.Now()
+	sc, err := claudelog.ComputeStats(d.BaseDir)
+	elapsed := time.Since(start)
+	if err != nil {
+		log.Printf("warning: fresh stats compute error (partial result returned): %v", err)
+	}
+	if sc != nil {
+		d.freshStatsMu.Lock()
+		d.freshStats = sc
+		d.freshStatsTime = time.Now()
+		d.freshStatsMu.Unlock()
+		log.Printf("fresh stats computed in %s: %d sessions, %d messages, %.2f total cost",
+			elapsed.Round(time.Millisecond),
+			sc.TotalSessions, sc.TotalMessages, sc.TotalCost)
+	}
+	return err
+}
+
+// GetFreshStats returns the in-memory fresh StatsCache. Returns nil if
+// ComputeFreshStats has not yet completed (e.g., still running in background
+// on startup — callers should fall back to GetStats in that case).
+func (d *Discoverer) GetFreshStats() *claudelog.StatsCache {
+	d.freshStatsMu.RLock()
+	defer d.freshStatsMu.RUnlock()
+	return d.freshStats
+}
+
+// FreshStatsTime returns the wall time when the fresh stats were last computed.
+// Returns zero time if no compute has completed.
+func (d *Discoverer) FreshStatsTime() time.Time {
+	d.freshStatsMu.RLock()
+	defer d.freshStatsMu.RUnlock()
+	return d.freshStatsTime
 }
 
 // GetStats returns the parsed stats-cache.json, reloading if the file changed.
