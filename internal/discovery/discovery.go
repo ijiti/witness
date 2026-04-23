@@ -35,6 +35,7 @@ type Project struct {
 	DisplayName  string // basename for UI
 	SessionCount int
 	LastActive   time.Time
+	Active       bool // currently being written to (within ActivityWindow)
 }
 
 // ProjectGroup nests worktree-style child projects under their filesystem
@@ -56,6 +57,21 @@ func (g ProjectGroup) TotalSessions() int {
 		n += c.SessionCount
 	}
 	return n
+}
+
+// GroupActive reports whether the group itself or any of its children are
+// currently active. Lets the sidebar surface a single dot on the parent when a
+// worktree child is writing but the user has the details collapsed.
+func (g ProjectGroup) GroupActive() bool {
+	if g.Active {
+		return true
+	}
+	for _, c := range g.Children {
+		if c.Active {
+			return true
+		}
+	}
+	return false
 }
 
 // GroupProjects nests worktree-style projects under their logical parent so
@@ -208,6 +224,7 @@ type SessionEntry struct {
 	ModTime time.Time
 	Size    int64
 	Path    string
+	Active  bool // currently being written to (within ActivityWindow)
 }
 
 // Discoverer walks the Claude projects directory.
@@ -240,6 +257,7 @@ type Discoverer struct {
 	// Live monitoring (session 3).
 	watcher     *Watcher
 	Broadcaster *Broadcaster
+	Activity    *ActivityTracker
 }
 
 type cacheEntry struct {
@@ -254,6 +272,7 @@ func NewDiscoverer(baseDir string) *Discoverer {
 		claudeDir:   filepath.Dir(baseDir), // ~/.claude/projects → ~/.claude
 		cache:       make(map[string]*cacheEntry),
 		Broadcaster: NewBroadcaster(),
+		Activity:    NewActivityTracker(),
 	}
 }
 
@@ -309,6 +328,13 @@ func (d *Discoverer) processWatchEvents() {
 	pending := make(map[string]WatchEvent)
 
 	for ev := range d.watcher.Events() {
+		// Record activity for the sidebar indicator — both create and modify
+		// count. This is cheap and must not be debounced so the "active" dot
+		// lights up on the very first write.
+		if ev.ProjectID != "" {
+			d.Activity.Mark(ev.ProjectID, ev.SessionID)
+		}
+
 		// Invalidate cache for modified sessions — must NOT be debounced so
 		// the next request sees fresh data.
 		if ev.Type == "modify" && ev.SessionID != "" {
@@ -484,6 +510,13 @@ func (d *Discoverer) ListProjects() ([]Project, error) {
 		return projects[i].LastActive.After(projects[j].LastActive)
 	})
 
+	active := d.Activity.ActiveProjects()
+	for i := range projects {
+		if active[projects[i].ID] {
+			projects[i].Active = true
+		}
+	}
+
 	return projects, nil
 }
 
@@ -534,6 +567,13 @@ func (d *Discoverer) ListSessions(projectID string) ([]SessionEntry, error) {
 			if h.FirstPrompt != "" {
 				files[i].Title = truncateTitle(h.FirstPrompt)
 			}
+		}
+	}
+
+	activeSess := d.Activity.ActiveSessions()
+	for i := range files {
+		if activeSess[projectID+"/"+files[i].ID] {
+			files[i].Active = true
 		}
 	}
 

@@ -7,10 +7,21 @@
 (function() {
     'use strict';
 
-    // Active SSE connection — only one at a time.
+    // Active SSE connection — only one at a time (per-view stream).
     var activeSSE = null;
     // Pending project refresh timer — must be cancellable on navigation.
     var pendingRefresh = null;
+
+    // Activity SSE — a single persistent connection for sidebar dots. Distinct
+    // from per-view streams so it survives HTMX navigation. Keyed decay timers
+    // clear each dot after ACTIVITY_DECAY_MS with no further writes; this must
+    // stay loosely synced with ActivityWindow in internal/discovery/activity.go
+    // so server-rendered initial state and client decay converge on the same
+    // window.
+    var activitySSE = null;
+    var ACTIVITY_DECAY_MS = 30000;
+    var projectTimers = {}; // projectID → timer clearing that project's dot
+    var sessionTimers = {}; // "projectID/sessionID" → timer clearing that dot
 
     // Live-follow + scroll-position state for the session view.
     // Persisted across page loads via localStorage; default ON.
@@ -103,6 +114,79 @@
             activeSSE.close();
             activeSSE = null;
         }
+    }
+
+    function setProjectActive(projectID) {
+        if (!projectID) { return; }
+        var dots = document.querySelectorAll(
+            '[data-project-id="' + cssEscape(projectID) + '"] .activity-dot'
+        );
+        for (var i = 0; i < dots.length; i++) {
+            dots[i].classList.remove('hidden');
+        }
+        if (projectTimers[projectID]) { clearTimeout(projectTimers[projectID]); }
+        projectTimers[projectID] = setTimeout(function() {
+            var again = document.querySelectorAll(
+                '[data-project-id="' + cssEscape(projectID) + '"] .activity-dot'
+            );
+            for (var j = 0; j < again.length; j++) { again[j].classList.add('hidden'); }
+            delete projectTimers[projectID];
+        }, ACTIVITY_DECAY_MS);
+    }
+
+    function setSessionActive(projectID, sessionID) {
+        if (!projectID || !sessionID) { return; }
+        var dots = document.querySelectorAll(
+            '[data-session-id="' + cssEscape(sessionID) +
+            '"][data-session-project="' + cssEscape(projectID) + '"] .activity-dot'
+        );
+        for (var i = 0; i < dots.length; i++) {
+            dots[i].classList.remove('hidden');
+        }
+        var key = projectID + '/' + sessionID;
+        if (sessionTimers[key]) { clearTimeout(sessionTimers[key]); }
+        sessionTimers[key] = setTimeout(function() {
+            var again = document.querySelectorAll(
+                '[data-session-id="' + cssEscape(sessionID) +
+                '"][data-session-project="' + cssEscape(projectID) + '"] .activity-dot'
+            );
+            for (var j = 0; j < again.length; j++) { again[j].classList.add('hidden'); }
+            delete sessionTimers[key];
+        }, ACTIVITY_DECAY_MS);
+    }
+
+    // CSS.escape shim for selector safety — projectIDs are filesystem-derived
+    // and can contain dots, quotes, etc. that break naive string concatenation.
+    function cssEscape(s) {
+        if (window.CSS && typeof window.CSS.escape === 'function') {
+            return window.CSS.escape(s);
+        }
+        return String(s).replace(/([^a-zA-Z0-9_\-])/g, '\\$1');
+    }
+
+    function initActivitySSE() {
+        if (activitySSE) { return; } // only one, survives navigation
+        function connect() {
+            var sse = new EventSource('/activity/stream');
+            activitySSE = sse;
+            sse.addEventListener('activity', function(e) {
+                var payload;
+                try { payload = JSON.parse(e.data); }
+                catch (err) { return; }
+                if (payload.projectID) { setProjectActive(payload.projectID); }
+                if (payload.projectID && payload.sessionID) {
+                    setSessionActive(payload.projectID, payload.sessionID);
+                }
+            });
+            sse.onerror = function() {
+                sse.close();
+                if (activitySSE === sse) { activitySSE = null; }
+                setTimeout(function() {
+                    if (!activitySSE) { connect(); }
+                }, 5000);
+            };
+        }
+        connect();
     }
 
     function initSessionSSE(url) {
@@ -240,12 +324,34 @@
     }
 
     // Init on page load.
+    initActivitySSE(); // persistent sidebar dots, never closed
     initLive();
 
     // Re-init after every HTMX content swap (project/session navigation).
+    // The sidebar and main content both re-render on full-page swaps, so
+    // reapply any in-flight activity state to the new DOM elements.
     document.body.addEventListener('htmx:afterSettle', function(e) {
         if (e.detail.target && e.detail.target.id === 'main-content') {
             initLive();
+            for (var pid in projectTimers) {
+                if (Object.prototype.hasOwnProperty.call(projectTimers, pid)) {
+                    var dots = document.querySelectorAll(
+                        '[data-project-id="' + cssEscape(pid) + '"] .activity-dot'
+                    );
+                    for (var i = 0; i < dots.length; i++) { dots[i].classList.remove('hidden'); }
+                }
+            }
+            for (var key in sessionTimers) {
+                if (Object.prototype.hasOwnProperty.call(sessionTimers, key)) {
+                    var parts = key.split('/');
+                    if (parts.length !== 2) { continue; }
+                    var sDots = document.querySelectorAll(
+                        '[data-session-id="' + cssEscape(parts[1]) +
+                        '"][data-session-project="' + cssEscape(parts[0]) + '"] .activity-dot'
+                    );
+                    for (var j = 0; j < sDots.length; j++) { sDots[j].classList.remove('hidden'); }
+                }
+            }
         }
     });
 })();

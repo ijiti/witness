@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"log"
@@ -148,6 +149,53 @@ func (h *Handlers) StreamProject(w http.ResponseWriter, r *http.Request) {
 			}
 			// Any change in the project triggers a session list refresh.
 			fmt.Fprintf(w, "event: refresh\ndata: %s\n\n", ev.SessionID)
+			flusher.Flush()
+		}
+	}
+}
+
+// StreamActivity is a global SSE endpoint that emits every watcher event as a
+// compact JSON payload so the sidebar can light "currently writing" dots on
+// any project/session without reloading. Runs independently of per-view SSE
+// streams: the client keeps one activity connection open for the life of the
+// page while per-view streams come and go during HTMX navigation.
+func (h *Handlers) StreamActivity(w http.ResponseWriter, r *http.Request) {
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "streaming not supported", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("X-Accel-Buffering", "no")
+
+	fmt.Fprintf(w, ": connected\n\n")
+	flusher.Flush()
+
+	clientID, events := h.disc.Broadcaster.Subscribe()
+	defer h.disc.Broadcaster.Unsubscribe(clientID)
+
+	for {
+		select {
+		case <-r.Context().Done():
+			return
+		case ev, ok := <-events:
+			if !ok {
+				return
+			}
+			if ev.ProjectID == "" {
+				continue
+			}
+			payload, err := json.Marshal(struct {
+				ProjectID string `json:"projectID"`
+				SessionID string `json:"sessionID,omitempty"`
+			}{ev.ProjectID, ev.SessionID})
+			if err != nil {
+				continue
+			}
+			fmt.Fprintf(w, "event: activity\ndata: %s\n\n", payload)
 			flusher.Flush()
 		}
 	}

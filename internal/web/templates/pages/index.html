@@ -12,10 +12,15 @@
            hx-get="/projects/{{$.ProjectID}}/sessions/{{.ID}}"
            hx-target="#main-content"
            hx-push-url="true"
+           data-session-id="{{.ID}}"
+           data-session-project="{{$.ProjectID}}"
            class="block px-4 py-3 rounded-lg hover:bg-surface-800 transition-colors border border-transparent hover:border-gray-700">
             <div class="flex items-center justify-between">
                 <div class="flex-1 min-w-0">
-                    <div class="font-medium text-gray-200 truncate">{{.Title}}</div>
+                    <div class="flex items-center gap-2">
+                        <span class="activity-dot w-2 h-2 rounded-full bg-green-400 animate-pulse shrink-0 {{if not .Active}}hidden{{end}}" aria-label="active"></span>
+                        <div class="font-medium text-gray-200 truncate">{{.Title}}</div>
+                    </div>
                     <div class="flex items-center gap-3 mt-1 text-xs text-gray-500">
                         {{if .Branch}}<span>{{.Branch}}</span>{{end}}
                         {{if .Version}}<span>v{{.Version}}</span>{{end}}
