@@ -287,13 +287,30 @@ func (d *Discoverer) StopWatching() {
 // session that is writing many JSONL records per second.
 const statsRecomputeMinInterval = 60 * time.Second
 
-// processWatchEvents handles incoming inotify events.
+// broadcastDebounce coalesces rapid writes to the same session into a single
+// SSE broadcast. Claude Code writes one JSONL record per streaming content
+// block, so a single assistant response can fire 30+ inotify events in a few
+// seconds; without debouncing each fires a full session re-parse + render in
+// every connected SSE client. 200ms feels live (~5 fps) without thrashing.
+const broadcastDebounce = 200 * time.Millisecond
+
+// processWatchEvents handles incoming inotify events. Cache invalidation runs
+// immediately so the next request sees fresh data; the SSE broadcast is
+// debounced per-session so streaming-heavy turns produce one broadcast each
+// (rather than 30+).
 func (d *Discoverer) processWatchEvents() {
 	var lastRecompute time.Time
 	var recomputePending bool
 
+	// Per-key (projectID/sessionID) coalescing timers. Latest event wins —
+	// when the timer fires we broadcast the most recent event for that key.
+	var dbMu sync.Mutex
+	timers := make(map[string]*time.Timer)
+	pending := make(map[string]WatchEvent)
+
 	for ev := range d.watcher.Events() {
-		// Invalidate cache for modified sessions.
+		// Invalidate cache for modified sessions — must NOT be debounced so
+		// the next request sees fresh data.
 		if ev.Type == "modify" && ev.SessionID != "" {
 			cacheKey := ev.ProjectID + "/" + ev.SessionID
 			d.mu.Lock()
@@ -311,8 +328,24 @@ func (d *Discoverer) processWatchEvents() {
 			}
 		}
 
-		// Broadcast to all SSE clients.
-		d.Broadcaster.Send(ev)
+		// Coalesce broadcasts: one per session per debounce window.
+		key := ev.ProjectID + "/" + ev.SessionID
+		dbMu.Lock()
+		pending[key] = ev
+		if t, ok := timers[key]; ok {
+			t.Stop()
+		}
+		timers[key] = time.AfterFunc(broadcastDebounce, func() {
+			dbMu.Lock()
+			latest, ok := pending[key]
+			delete(pending, key)
+			delete(timers, key)
+			dbMu.Unlock()
+			if ok {
+				d.Broadcaster.Send(latest)
+			}
+		})
+		dbMu.Unlock()
 	}
 }
 
