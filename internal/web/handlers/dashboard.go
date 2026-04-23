@@ -41,6 +41,7 @@ func (h *Handlers) Dashboard(w http.ResponseWriter, r *http.Request) {
 		data["MaxMessages"] = stats.MaxDailyMessages()
 		data["MaxToolCalls"] = stats.MaxDailyToolCalls()
 		data["MaxHourCount"] = stats.MaxHourCount()
+		data["MaxDailyCost"] = stats.MaxDailyCost()
 	}
 
 	h.render(w, r, "dashboard", data)

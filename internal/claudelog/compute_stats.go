@@ -117,6 +117,8 @@ func ComputeStats(claudeProjectsDir string) (*StatsCache, error) {
 	// Per-date, per-model token sums.
 	type dayModel = map[string]int
 	dailyTokens := make(map[string]dayModel)
+	// Per-date USD cost summed across all models.
+	dailyCost := make(map[string]float64)
 
 	var firstError error
 	var longestDurationMs int64
@@ -183,6 +185,12 @@ func ComputeStats(claudeProjectsDir string) (*StatsCache, error) {
 					dailyTokens[dateStr] = make(dayModel)
 				}
 				dailyTokens[dateStr][model] += t.InputTokens + t.OutputTokens
+
+				// Daily cost — per-turn cost is cheaper to compute here than a
+				// second walk later, and avoids ordering coupling with the
+				// per-model cost pass below.
+				dailyCost[dateStr] += costlog.Cost(model,
+					t.InputTokens, t.OutputTokens, t.CacheCreate, t.CacheRead)
 			}
 		}
 
@@ -229,6 +237,13 @@ func ComputeStats(claudeProjectsDir string) (*StatsCache, error) {
 	}
 	sort.Slice(sc.DailyModelTokens, func(i, j int) bool {
 		return sc.DailyModelTokens[i].Date < sc.DailyModelTokens[j].Date
+	})
+
+	for date, cost := range dailyCost {
+		sc.DailyCost = append(sc.DailyCost, DailyCost{Date: date, Cost: cost})
+	}
+	sort.Slice(sc.DailyCost, func(i, j int) bool {
+		return sc.DailyCost[i].Date < sc.DailyCost[j].Date
 	})
 
 	sc.LastComputedDate = time.Now().UTC().Format("2006-01-02")

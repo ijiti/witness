@@ -71,6 +71,38 @@
         {{end}}
     </div>
 
+    {{/* Daily cost chart */}}
+    {{if $stats.DailyCost}}
+    {{$maxCost := .MaxDailyCost}}
+    <div class="bg-surface-800 rounded-lg border border-gray-700 p-4 mb-6">
+        <div class="flex items-baseline justify-between mb-3">
+            <h3 class="text-sm font-bold text-gray-300">Daily Cost</h3>
+            <span class="text-xs text-gray-500">peak {{formatCost $maxCost}}</span>
+        </div>
+        {{$costW := add (mul (len $stats.DailyCost) 22) 60}}
+        <svg viewBox="0 0 {{$costW}} 140" preserveAspectRatio="xMinYMid meet" class="w-full" style="max-height: 160px">
+            {{/* Y-axis labels */}}
+            <text x="0" y="15" class="fill-gray-500" style="font-size:10px">{{formatCost $maxCost}}</text>
+            <text x="0" y="125" class="fill-gray-500" style="font-size:10px">$0</text>
+
+            {{/* Horizontal guideline at top of bars */}}
+            <line x1="40" y1="120" x2="{{$costW}}" y2="120" class="stroke-gray-700" stroke-width="0.5"/>
+
+            {{range $i, $day := $stats.DailyCost}}
+            {{$x := add (mul $i 22) 40}}
+            {{$h := costBarHeight $day.Cost $maxCost 110}}
+            <rect x="{{$x}}" y="{{sub 120 $h}}" width="16" height="{{$h}}" rx="2" class="fill-yellow-500/70">
+                <title>{{$day.Date}}: {{formatCost $day.Cost}}</title>
+            </rect>
+            {{/* Date tick every 7 days to avoid crowding */}}
+            {{if eq (mod $i 7) 0}}
+            <text x="{{add $x 8}}" y="136" text-anchor="middle" class="fill-gray-500" style="font-size:9px">{{shortDate $day.Date}}</text>
+            {{end}}
+            {{end}}
+        </svg>
+    </div>
+    {{end}}
+
     {{/* Model usage + Hour heatmap side by side */}}
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {{/* Model usage */}}

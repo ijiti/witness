@@ -15,6 +15,7 @@ type StatsCache struct {
 	LastComputedDate string           `json:"lastComputedDate"`
 	DailyActivity    []DailyActivity  `json:"dailyActivity"`
 	DailyModelTokens []DailyTokens    `json:"dailyModelTokens"`
+	DailyCost        []DailyCost      `json:"dailyCost,omitempty"`
 	ModelUsage       map[string]ModelUsageStats `json:"modelUsage"`
 	TotalSessions    int              `json:"totalSessions"`
 	TotalMessages    int              `json:"totalMessages"`
@@ -38,6 +39,12 @@ type DailyActivity struct {
 type DailyTokens struct {
 	Date          string         `json:"date"`
 	TokensByModel map[string]int `json:"tokensByModel"`
+}
+
+// DailyCost is the total USD cost of one day's activity across all models.
+type DailyCost struct {
+	Date string  `json:"date"`
+	Cost float64 `json:"cost"`
 }
 
 // ModelUsageStats holds aggregate token usage for one model.
@@ -157,6 +164,17 @@ func (sc *StatsCache) MaxHourCount() int {
 	for _, c := range sc.HourCounts {
 		if c > max {
 			max = c
+		}
+	}
+	return max
+}
+
+// MaxDailyCost returns the peak USD cost across all days.
+func (sc *StatsCache) MaxDailyCost() float64 {
+	max := 0.0
+	for _, d := range sc.DailyCost {
+		if d.Cost > max {
+			max = d.Cost
 		}
 	}
 	return max
