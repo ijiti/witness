@@ -309,7 +309,14 @@ type Turn struct {
 
 	AssistantText string
 	ThinkingText  string
-	Model         string
+	// ThinkingBlocks counts thinking content blocks in the assistant message,
+	// regardless of whether their text is captured. Claude Code may persist
+	// signature-only thinking blocks (empty text + cryptographic signature)
+	// when the user has not opted into showThinkingSummaries; in that case
+	// ThinkingText is empty but ThinkingBlocks > 0 — surface the indicator
+	// instead of silently hiding the fact that the agent thought.
+	ThinkingBlocks int
+	Model          string
 
 	ToolCalls []ToolCall
 

@@ -324,6 +324,7 @@ func buildTurns(records []*RawRecord, sess *Session, skipSidechain bool) []Turn 
 					assistParts = append(assistParts, b.Text)
 				case "thinking":
 					thinkParts = append(thinkParts, b.Thinking)
+					turn.ThinkingBlocks++
 				case "tool_use":
 					tc := ToolCall{
 						ID:    b.ID,

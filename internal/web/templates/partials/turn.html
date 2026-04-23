@@ -28,11 +28,15 @@
     {{end}}
 
     {{/* Assistant response */}}
-    {{if or .AssistantText .ThinkingText (gt (len .ToolCalls) 0)}}
+    {{if or .AssistantText .ThinkingText (gt .ThinkingBlocks 0) (gt (len .ToolCalls) 0)}}
     <div class="flex gap-3">
         <div class="flex-shrink-0 w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-xs text-gray-300 font-bold mt-1">A</div>
         <div class="flex-1 min-w-0 space-y-2">
-            {{/* Thinking block (collapsible) */}}
+            {{/* Thinking block — three states:
+                 1. ThinkingText present: full collapsible content
+                 2. ThinkingBlocks > 0 but text empty: signature-only thinking
+                    (Claude Code default; opt-in via showThinkingSummaries to capture)
+                 3. neither: render nothing */}}
             {{if .ThinkingText}}
             <details class="bg-purple-900/20 border border-purple-800/30 rounded-lg overflow-hidden">
                 <summary class="px-4 py-2 text-xs text-purple-400 hover:bg-purple-900/30 transition-colors flex items-center gap-2">
@@ -43,6 +47,12 @@
                     <pre class="text-xs text-purple-300/80 whitespace-pre-wrap max-h-96 overflow-y-auto">{{truncate .ThinkingText 4000}}</pre>
                 </div>
             </details>
+            {{else if gt .ThinkingBlocks 0}}
+            <div class="bg-purple-900/10 border border-purple-800/20 rounded-lg px-4 py-2 text-xs text-purple-400/70 flex items-center gap-2"
+                 title="Claude Code persisted only signatures for these thinking blocks (default for many model variants). Set 'showThinkingSummaries: true' in ~/.claude/settings.json and start a new session to capture summaries.">
+                <span aria-hidden="true">💭</span>
+                <span>thinking ({{.ThinkingBlocks}} block{{if ne .ThinkingBlocks 1}}s{{end}}, text not retained)</span>
+            </div>
             {{end}}
 
             {{/* Tool calls */}}
