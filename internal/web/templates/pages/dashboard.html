@@ -34,7 +34,11 @@
         {{if $stats.DailyActivity}}
         {{$maxMsg := .MaxMessages}}
         {{$maxTC := .MaxToolCalls}}
-        <svg viewBox="0 0 700 200" class="w-full" style="max-height: 200px">
+        {{/* viewBox width scales with day count so bars never clip. Each day is
+             48px wide (two 18px bars + 12px gap); 40px on the left for axis
+             labels and 20px on the right for the final date label. */}}
+        {{$chartW := add (mul (len $stats.DailyActivity) 48) 60}}
+        <svg viewBox="0 0 {{$chartW}} 200" preserveAspectRatio="xMinYMid meet" class="w-full" style="max-height: 200px">
             {{/* Y-axis labels */}}
             <text x="0" y="15" class="fill-gray-500" style="font-size:10px">{{$maxMsg}}</text>
             <text x="0" y="185" class="fill-gray-500" style="font-size:10px">0</text>

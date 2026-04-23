@@ -20,7 +20,11 @@
 </head>
 <body class="bg-surface-900 text-gray-100 min-h-screen flex">
     {{template "sidebar" .}}
-    <main class="flex-1 ml-64 overflow-y-auto min-h-screen">
+    {{/* No overflow on <main>: let the document body scroll. Sticky elements
+         (e.g. the session header) need an actual scrolling ancestor; <main>
+         with overflow-y-auto becomes a non-scrolling overflow context that
+         silently wins the sticky-positioning lookup. */}}
+    <main class="flex-1 ml-64 min-h-screen">
         <div id="main-content" class="max-w-[1400px] mx-auto p-6">
             {{template "content" .}}
         </div>
