@@ -6,32 +6,40 @@
         <p class="text-sm text-gray-500 mt-1">{{len .Sessions}} sessions</p>
     </div>
 
-    <div id="session-list" class="space-y-1">
-        {{range .Sessions}}
-        <a href="/projects/{{$.ProjectID}}/sessions/{{.ID}}"
-           hx-get="/projects/{{$.ProjectID}}/sessions/{{.ID}}"
-           hx-target="#main-content"
-           hx-push-url="true"
-           data-session-id="{{.ID}}"
-           data-session-project="{{$.ProjectID}}"
-           class="block px-4 py-3 rounded-lg hover:bg-surface-800 transition-colors border border-transparent hover:border-gray-700">
-            <div class="flex items-center justify-between">
-                <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-2">
-                        <span class="activity-dot w-2 h-2 rounded-full bg-green-400 animate-pulse shrink-0 {{if not .Active}}hidden{{end}}" aria-label="active"></span>
-                        <div class="font-medium text-gray-200 truncate">{{.Title}}</div>
+    <div id="session-list" class="space-y-4">
+        {{range .SessionGroups}}
+        <div class="space-y-1">
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-500 px-1 pb-1">
+                {{.Label}}
+                <span class="text-gray-600 font-normal normal-case tracking-normal ml-1">· {{len .Sessions}}</span>
+            </h3>
+            {{range .Sessions}}
+            <a href="/projects/{{$.ProjectID}}/sessions/{{.ID}}"
+               hx-get="/projects/{{$.ProjectID}}/sessions/{{.ID}}"
+               hx-target="#main-content"
+               hx-push-url="true"
+               data-session-id="{{.ID}}"
+               data-session-project="{{$.ProjectID}}"
+               class="block px-4 py-3 rounded-lg hover:bg-surface-800 transition-colors border border-transparent hover:border-gray-700">
+                <div class="flex items-center justify-between">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2">
+                            <span class="activity-dot w-2 h-2 rounded-full bg-green-400 animate-pulse shrink-0 {{if not .Active}}hidden{{end}}" aria-label="active"></span>
+                            <div class="font-medium text-gray-200 truncate">{{.Title}}</div>
+                        </div>
+                        <div class="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                            {{if .Branch}}<span>{{.Branch}}</span>{{end}}
+                            {{if .Version}}<span>v{{.Version}}</span>{{end}}
+                            <span>{{formatBytes .Size}}</span>
+                        </div>
                     </div>
-                    <div class="flex items-center gap-3 mt-1 text-xs text-gray-500">
-                        {{if .Branch}}<span>{{.Branch}}</span>{{end}}
-                        {{if .Version}}<span>v{{.Version}}</span>{{end}}
-                        <span>{{formatBytes .Size}}</span>
+                    <div class="text-xs text-gray-500 whitespace-nowrap ml-4">
+                        {{formatTime .ModTime}}
                     </div>
                 </div>
-                <div class="text-xs text-gray-500 whitespace-nowrap ml-4">
-                    {{formatTime .ModTime}}
-                </div>
-            </div>
-        </a>
+            </a>
+            {{end}}
+        </div>
         {{end}}
     </div>
 
