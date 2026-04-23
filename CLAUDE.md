@@ -85,6 +85,14 @@ Then narrow `watcher_other.go`'s build tag to `!linux && !darwin && !windows`. K
 
 HTMX + Tailwind. Templates live in `internal/web/templates/`, static assets (htmx.min.js, tailwind.css, live.js) in `internal/web/static/`. Both are embedded into the binary via `embed.FS` — no separate asset deployment.
 
+**Tailwind CSS is precompiled and committed.** Source is `tailwind.input.css`; config is `tailwind.config.js` (content globs scan `internal/web/templates/**/*.html`). To rebuild after changing templates or adding utility classes:
+
+```bash
+scripts/build-css.sh    # uses npx tailwindcss@3.4.17, writes to internal/web/static/tailwind.css
+```
+
+Node is a **build-time only** dep. The shipped binary remains pure-Go static. If you add a new utility class to a template, run the script and commit the regenerated `tailwind.css` — the embed picks it up at next `go build`. Custom colors (e.g. the `surface-700/800/900` palette) live in `tailwind.config.js`'s `theme.extend.colors`. Add new ones there.
+
 - Layout entry: `internal/web/templates/layouts/base.html`
 - Pages: `internal/web/templates/pages/*.html`
 - Partials: `internal/web/templates/partials/*.html`
