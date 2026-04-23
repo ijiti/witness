@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -10,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/ijiti/witness/internal/discovery"
 	"github.com/ijiti/witness/internal/web/handlers"
 )
@@ -238,6 +240,80 @@ func TestSearch_WithResults(t *testing.T) {
 	body := w.Body.String()
 	if !strings.Contains(body, "hello world test") {
 		t.Error("search results should contain 'hello world test'")
+	}
+}
+
+// TestStreamActivity verifies the SSE endpoint emits events from the
+// broadcaster as JSON payloads and filters out events with empty projectID.
+func TestStreamActivity(t *testing.T) {
+	dir := t.TempDir()
+	projDir := filepath.Join(dir, "projects")
+	if err := os.MkdirAll(projDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	disc := discovery.NewDiscoverer(projDir)
+	pages := ParseTemplates()
+	h := handlers.New(disc, pages)
+
+	r := chi.NewRouter()
+	r.Get("/activity/stream", h.StreamActivity)
+	srv := httptest.NewServer(r)
+	defer srv.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, "GET", srv.URL+"/activity/stream", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err := srv.Client().Do(req)
+	if err != nil {
+		t.Fatalf("open stream: %v", err)
+	}
+	defer resp.Body.Close()
+
+	bodyCh := make(chan string, 1)
+	go func() {
+		var collected []byte
+		buf := make([]byte, 2048)
+		for {
+			n, err := resp.Body.Read(buf)
+			if n > 0 {
+				collected = append(collected, buf[:n]...)
+				if strings.Contains(string(collected), "event: activity") {
+					cancel() // close the stream so Read returns
+				}
+			}
+			if err != nil {
+				break
+			}
+		}
+		bodyCh <- string(collected)
+	}()
+
+	// Give the handler a moment to subscribe before publishing. Send a valid
+	// event and one with empty projectID that must be filtered out.
+	time.Sleep(150 * time.Millisecond)
+	disc.Broadcaster.Send(discovery.WatchEvent{ProjectID: "-test-project", SessionID: "sess-1", Type: "modify"})
+	disc.Broadcaster.Send(discovery.WatchEvent{ProjectID: "", SessionID: "orphan", Type: "modify"})
+
+	select {
+	case body := <-bodyCh:
+		if !strings.Contains(body, "event: activity") {
+			t.Fatalf("stream never emitted an activity event; got:\n%s", body)
+		}
+		if !strings.Contains(body, `"projectID":"-test-project"`) {
+			t.Fatalf("stream missing expected projectID payload; got:\n%s", body)
+		}
+		if !strings.Contains(body, `"sessionID":"sess-1"`) {
+			t.Fatalf("stream missing expected sessionID payload; got:\n%s", body)
+		}
+		if strings.Contains(body, `"sessionID":"orphan"`) {
+			t.Fatalf("stream leaked event with empty projectID; got:\n%s", body)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("timed out waiting for stream body")
 	}
 }
 

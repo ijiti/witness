@@ -58,6 +58,7 @@ func NewServer(disc *discovery.Discoverer, addr string) *http.Server {
 	r.Get("/projects/{projectID}/sessions/{sessionID}/turns", h.SessionTurns)
 
 	// SSE streaming endpoints (session 3: live monitoring).
+	r.Get("/activity/stream", h.StreamActivity)
 	r.Get("/projects/{projectID}/stream", h.StreamProject)
 	r.Get("/projects/{projectID}/sessions/{sessionID}/stream", h.StreamSession)
 
